@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScrapeFlow - Ekstrator & WP Auto Publisher Premium</title>
+    <!-- Google Fonts: Inter & Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JSZip for Client Side Zipping -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <i data-lucide="terminal" class="logo-icon"></i>
+                </div>
+                <div>
+                    <h1>ScrapeFlow</h1>
+                    <span class="sub-brand">WP Auto-Publisher Engine</span>
+                </div>
+            </div>
+
+            <!-- Mode Selector Switcher -->
+            <div class="mode-switcher-container">
+                <button id="mode-url-btn" class="mode-btn active">
+                    <i data-lucide="link"></i> Scrape URL
+                </button>
+                <button id="mode-keyword-btn" class="mode-btn">
+                    <i data-lucide="search"></i> Cari Kata Kunci
+                </button>
+            </div>
+
+            <!-- URL Scraper Panel -->
+            <div id="panel-url-scrape" class="panel mode-panel">
+                <h3 class="panel-title">Mulai Scraping URL</h3>
+                <form id="scrape-form" class="scrape-form">
+                    <div class="input-group">
+                        <label for="url-input">URL Artikel / Blog</label>
+                        <div class="input-wrapper">
+                            <i data-lucide="link" class="input-icon"></i>
+                            <input type="url" id="url-input" placeholder="https://example.com/artikel-menarik" required autocomplete="off">
+                        </div>
+                    </div>
+                    <button type="submit" id="submit-btn" class="btn btn-primary btn-block">
+                        <span class="btn-text">Ekstrak Konten</span>
+                        <div class="btn-spinner hidden">
+                            <div class="spinner"></div>
+                        </div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Keyword Search Panel -->
+            <div id="panel-keyword-search" class="panel mode-panel hidden">
+                <h3 class="panel-title">Cari dengan Kata Kunci</h3>
+                
+                <!-- Keyword Sub-mode Switcher -->
+                <div class="sub-mode-switcher-container">
+                    <button id="search-single-mode-btn" class="sub-mode-btn active">Satu Keyword</button>
+                    <button id="search-batch-mode-btn" class="sub-mode-btn">Massal (Batch)</button>
+                </div>
+
+                <!-- Single Keyword Form -->
+                <form id="search-form" class="scrape-form search-sub-panel">
+                    <div class="input-group">
+                        <label for="keyword-input">Kata Kunci (Keyword)</label>
+                        <div class="input-wrapper">
+                            <i data-lucide="search" class="input-icon"></i>
+                            <input type="text" id="keyword-input" placeholder="Cara instal WordPress..." required autocomplete="off">
+                        </div>
+                    </div>
+                    <button type="submit" id="search-btn" class="btn btn-primary btn-block">
+                        <span class="search-btn-text">Cari Artikel</span>
+                        <div class="search-btn-spinner hidden">
+                            <div class="spinner"></div>
+                        </div>
+                    </button>
+                </form>
+
+                <!-- Batch Keywords Form -->
+                <div id="search-batch-panel" class="search-sub-panel hidden">
+                    <div class="input-group">
+                        <label>Daftar Kata Kunci (Satu per baris)</label>
+                        <textarea id="batch-keywords-textarea" rows="6" placeholder="WordPress Hosting&#10;Belajar Web Scraping&#10;Tutorial REST API&#10;Optimasi SEO Blog" class="batch-textarea"></textarea>
+                    </div>
+
+                    <!-- File Upload Input Wrapper -->
+                    <div class="file-upload-wrapper">
+                        <label for="batch-file-input" class="file-upload-label">
+                            <i data-lucide="file-up"></i>
+                            <span>Unggah keyword.txt</span>
+                        </label>
+                        <input type="file" id="batch-file-input" accept=".txt">
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label for="batch-articles-limit">Jumlah Artikel per Keyword</label>
+                        <select id="batch-articles-limit" class="select-filter" style="width: 100%; padding: 8px;">
+                            <option value="1">1 Artikel Teratas</option>
+                            <option value="3" selected>3 Artikel Teratas</option>
+                            <option value="5">5 Artikel Teratas</option>
+                            <option value="8">Semua Hasil (Maks 8)</option>
+                        </select>
+                    </div>
+
+                    <button id="btn-start-batch" class="btn btn-primary btn-block">
+                        <i data-lucide="play-circle"></i> Mulai Batch Scrape
+                    </button>
+                </div>
+
+                <!-- Search Results Sidebar List (for single mode) -->
+                <div id="search-results-container" class="search-results-container hidden">
+                    <h4 class="sidebar-sub-title">Hasil Pencarian:</h4>
+                    <div id="search-results-list" class="search-results-list"></div>
+                </div>
+            </div>
+
+            <!-- WordPress Config Panel -->
+            <div class="panel">
+                <div class="panel-header-action">
+                    <h3 class="panel-title">Pengaturan WordPress</h3>
+                    <button id="btn-save-wp" class="btn-icon-text" title="Simpan Konfigurasi" style="color:var(--secondary)">
+                        <i data-lucide="save"></i> Simpan
+                    </button>
+                </div>
+                <div class="wp-config-fields">
+                    <div class="input-group sm-input">
+                        <label for="wp-url">Site URL</label>
+                        <input type="url" id="wp-url" placeholder="https://mywebsite.com" autocomplete="off">
+                    </div>
+                    <div class="input-group sm-input">
+                        <label for="wp-user">Username</label>
+                        <input type="text" id="wp-user" placeholder="admin" autocomplete="off">
+                    </div>
+                    <div class="input-group sm-input">
+                        <label for="wp-pass">Application Password</label>
+                        <input type="password" id="wp-pass" placeholder="xxxx xxxx xxxx xxxx" autocomplete="off">
+                        <span class="input-hint">WP-Admin -> Profil -> Sandi Aplikasi</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options Panel -->
+            <div class="panel">
+                <h3 class="panel-title">Pengaturan Ekstraksi</h3>
+                <div class="settings-group">
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="opt-images" checked>
+                        <label for="opt-images">Ekstrak Gambar</label>
+                    </div>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="opt-min-size" checked>
+                        <label for="opt-min-size">Saring Gambar Kecil (&lt;50px)</label>
+                    </div>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="opt-clean-layout" checked>
+                        <label for="opt-clean-layout">Format Artikel Bersih</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Panel -->
+            <div class="panel history-panel flex-grow">
+                <div class="panel-header-action">
+                    <h3 class="panel-title">Riwayat</h3>
+                    <button id="clear-history-btn" class="btn-icon-text" title="Hapus Riwayat">
+                        <i data-lucide="trash-2"></i> Bersihkan
+                    </button>
+                </div>
+                <div id="history-list" class="history-list">
+                    <div class="empty-history">
+                        <i data-lucide="history"></i>
+                        <p>Belum ada riwayat</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="sidebar-footer">
+                <p>&copy; 2026 ScrapeFlow WP AI Engine</p>
+            </footer>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="scraped-url-display hidden" id="url-header-container">
+                    <span class="url-label">Scraped URL:</span>
+                    <a href="#" target="_blank" id="url-header-link" class="url-link">
+                        <span id="url-header-text"></span>
+                        <i data-lucide="external-link"></i>
+                    </a>
+                </div>
+                <div class="topbar-actions ml-auto">
+                    <button id="theme-toggle" class="btn-circle" title="Ubah Tema">
+                        <i data-lucide="sun" class="sun-icon"></i>
+                        <i data-lucide="moon" class="moon-icon hidden"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Body -->
+            <div class="content-viewport">
+                
+                <!-- 1. Welcome Screen -->
+                <div id="welcome-view" class="view-state active">
+                    <div class="welcome-card">
+                        <div class="welcome-icon">
+                            <i data-lucide="globe"></i>
+                        </div>
+                        <h2>Selamat Datang di ScrapeFlow</h2>
+                        <p>Platform untuk mengunduh konten dari web mana pun, mengekstrak gambarnya, dan memposting hasilnya langsung ke website WordPress Anda dengan sekali klik.</p>
+                        
+                        <div class="features-grid">
+                            <div class="feature-item">
+                                <div class="feature-icon"><i data-lucide="search"></i></div>
+                                <h4>Pencarian Kata Kunci</h4>
+                                <p>Cukup masukkan topik atau keyword, temukan artikel yang relevan di web, dan langsung scrape isinya tanpa ribet.</p>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon"><i data-lucide="wordpress"></i></div>
+                                <h4>Auto-Publish ke WordPress</h4>
+                                <p>Unggah naskah bersih langsung ke dashboard WP Anda. Secara otomatis mengunggah gambar ke Media Library agar tersimpan permanen.</p>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon"><i data-lucide="layers"></i></div>
+                                <h4>Scraping Massal (Batch)</h4>
+                                <p>Unggah keyword.txt, biarkan sistem bekerja mengekstrak banyak artikel sekaligus, dan unduh sebagai file ZIP HTML.</p>
+                            </div>
+                            <div class="feature-item">
+                                <div class="feature-icon"><i data-lucide="file-text"></i></div>
+                                <h4>Ekspor Banyak Format</h4>
+                                <p>Simpan konten bersih Anda langsung ke dalam file Markdown (.md), HTML terformat, atau Plain Text (.txt).</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Loading State / Skeletons -->
+                <div id="loading-view" class="view-state hidden">
+                    <div class="skeleton-header">
+                        <div class="skeleton-badge"></div>
+                        <div class="skeleton-title"></div>
+                        <div class="skeleton-meta"></div>
+                    </div>
+                    <div class="skeleton-tabs">
+                        <div class="skeleton-tab"></div>
+                        <div class="skeleton-tab"></div>
+                        <div class="skeleton-tab"></div>
+                    </div>
+                    <div class="skeleton-body">
+                        <div class="skeleton-line full"></div>
+                        <div class="skeleton-line three-quarters"></div>
+                        <div class="skeleton-line half"></div>
+                        <div class="skeleton-line full"></div>
+                        <div class="skeleton-line five-sixths"></div>
+                        <div class="skeleton-line half"></div>
+                    </div>
+                </div>
+
+                <!-- 3. Error State -->
+                <div id="error-view" class="view-state hidden">
+                    <div class="error-card">
+                        <div class="error-icon">
+                            <i data-lucide="alert-octagon"></i>
+                        </div>
+                        <h3>Proses Scraping Gagal</h3>
+                        <p id="error-message">Tidak dapat memuat tautan. Silakan periksa kembali URL atau koneksi server Anda.</p>
+                        <button id="retry-btn" class="btn btn-secondary">
+                            <i data-lucide="refresh-cw"></i> Coba Lagi
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. Main Results View -->
+                <div id="result-view" class="view-state hidden">
+                    <!-- Article Meta Summary Card -->
+                    <div class="result-header">
+                        <div class="site-badge">
+                            <i data-lucide="globe"></i>
+                            <span id="meta-site-name">Website.com</span>
+                        </div>
+                        <h2 id="meta-title" class="article-title">Judul Artikel</h2>
+                        
+                        <div class="article-meta">
+                            <span class="meta-item author-meta">
+                                <i data-lucide="user"></i>
+                                <span id="meta-author">Penulis Artikel</span>
+                            </span>
+                            <span class="meta-item date-meta">
+                                <i data-lucide="calendar"></i>
+                                <span id="meta-date">14 Juli 2026</span>
+                            </span>
+                            <span class="meta-item category-meta">
+                                <i data-lucide="folder"></i>
+                                <span id="meta-category">Uncategorized</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Dashboard -->
+                    <div class="stats-bar">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-words">0</div>
+                            <div class="stat-label">Jumlah Kata</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-read-time">0m</div>
+                            <div class="stat-label">Est. Baca</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-images">0</div>
+                            <div class="stat-label">Gambar Ekstrak</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-duration">0ms</div>
+                            <div class="stat-label">Durasi Scraping</div>
+                        </div>
+                    </div>
+
+                    <!-- WordPress Upload Success Alert Banner -->
+                    <div id="wp-success-banner" class="wp-success-banner hidden">
+                        <div class="wp-banner-icon"><i data-lucide="check-circle"></i></div>
+                        <div class="wp-banner-body">
+                            <h4>Artikel Berhasil Diunggah ke WordPress!</h4>
+                            <p>Postingan telah terbit dengan status <strong id="wp-banner-status">draft</strong>.</p>
+                            <div class="wp-banner-actions">
+                                <a href="#" id="wp-link-view" target="_blank" class="btn btn-sm btn-secondary">
+                                    <i data-lucide="eye"></i> Lihat Postingan
+                                </a>
+                                <a href="#" id="wp-link-edit" target="_blank" class="btn btn-sm btn-primary">
+                                    <i data-lucide="edit-3"></i> Edit di WordPress
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs Selector -->
+                    <div class="tabs-container">
+                        <div class="tabs">
+                            <button class="tab-btn active" data-tab="tab-article">
+                                <i data-lucide="file-text"></i> Artikel Lengkap
+                            </button>
+                            <button class="tab-btn" data-tab="tab-gallery">
+                                <i data-lucide="image"></i> Galeri Gambar (<span id="tab-img-count">0</span>)
+                            </button>
+                            <button class="tab-btn" data-tab="tab-meta">
+                                <i data-lucide="database"></i> Metadata &amp; JSON
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tab Panel: Article Content -->
+                    <div class="tab-panel active" id="tab-article">
+                        <!-- Actions Grid (Exports + WordPress Publish) -->
+                        <div class="control-actions-grid">
+                            <!-- Export Card -->
+                            <div class="action-card">
+                                <h4 class="action-card-title"><i data-lucide="download"></i> Ekspor File</h4>
+                                <div class="action-buttons">
+                                    <button id="btn-export-md" class="btn btn-sm btn-outline">Markdown</button>
+                                    <button id="btn-export-html" class="btn btn-sm btn-outline">HTML</button>
+                                    <button id="btn-export-txt" class="btn btn-sm btn-outline">TXT</button>
+                                </div>
+                            </div>
+                            
+                            <!-- WordPress Post Card -->
+                            <div class="action-card highlight-card">
+                                <h4 class="action-card-title"><i data-lucide="wordpress"></i> WordPress Publisher</h4>
+                                <div class="wp-publish-controls">
+                                    <div class="select-wrapper">
+                                        <select id="wp-post-status" class="select-filter">
+                                            <option value="draft">Draft (Draf)</option>
+                                            <option value="publish">Publish (Terbit)</option>
+                                        </select>
+                                    </div>
+                                    <button id="btn-publish-wp" class="btn btn-sm btn-primary">
+                                        <span class="btn-pub-text">Posting Sekarang</span>
+                                        <div class="btn-pub-spinner hidden">
+                                            <div class="spinner spinner-white"></div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Article Body -->
+                        <div class="article-reader-container">
+                            <div id="article-body-content" class="article-body-content html-output-style">
+                                <!-- Clean Scraped HTML -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Panel: Image Gallery -->
+                    <div class="tab-panel" id="tab-gallery">
+                        <div class="action-bar">
+                            <div class="gallery-controls">
+                                <h4 class="action-bar-title">Gambar Terdeteksi</h4>
+                                <div class="filter-wrapper">
+                                    <i data-lucide="filter" class="filter-icon"></i>
+                                    <select id="image-filter" class="select-filter">
+                                        <option value="all">Semua Format</option>
+                                        <option value="jpg">JPG / JPEG</option>
+                                        <option value="png">PNG</option>
+                                        <option value="webp">WebP</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="action-buttons">
+                                <button id="btn-download-zip" class="btn btn-sm btn-primary">
+                                    <span class="btn-zip-text"><i data-lucide="archive"></i> Download Semua (ZIP)</span>
+                                    <div class="btn-zip-spinner hidden">
+                                        <div class="spinner spinner-white"></div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Image Gallery Grid -->
+                        <div id="gallery-grid" class="gallery-grid"></div>
+                    </div>
+
+                    <!-- Tab Panel: Metadata -->
+                    <div class="tab-panel" id="tab-meta">
+                        <div class="meta-section">
+                            <h4 class="section-heading">SEO &amp; Open Graph Meta Tags</h4>
+                            <div class="meta-table-wrapper">
+                                <table class="meta-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tag / Property</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="meta-tags-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="meta-section">
+                            <div class="panel-header-action">
+                                <h4 class="section-heading">Response JSON Mentah</h4>
+                                <button id="btn-copy-json" class="btn btn-sm btn-outline">
+                                    <i data-lucide="copy"></i> Salin JSON
+                                </button>
+                            </div>
+                            <pre class="json-code-block"><code id="raw-json-block"></code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Batch Progress View -->
+                <div id="batch-view" class="view-state hidden">
+                    <div class="batch-header">
+                        <div class="batch-badge">
+                            <i data-lucide="layers"></i> Scraping Massal (Batch)
+                        </div>
+                        <h2 class="batch-view-title">Dashboard Progres Antrean</h2>
+                        <p id="batch-progress-text">Menyiapkan antrean scraping...</p>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="batch-progress-bar-container">
+                        <div id="batch-progress-bar-fill" class="batch-progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+
+                    <!-- Batch Statistics Row -->
+                    <div class="stats-bar">
+                        <div class="stat-card">
+                            <div class="stat-value" id="batch-stat-total">0</div>
+                            <div class="stat-label">Total Keyword</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="batch-stat-success" style="color:var(--secondary)">0</div>
+                            <div class="stat-label">Sukses</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="batch-stat-failed" style="color:var(--accent-red)">0</div>
+                            <div class="stat-label">Gagal</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="batch-stat-words">0</div>
+                            <div class="stat-label">Total Kata</div>
+                        </div>
+                    </div>
+
+                    <!-- Batch Actions Controls (appears on complete) -->
+                    <div id="batch-actions-panel" class="batch-actions-panel hidden">
+                        <div class="action-card highlight-card">
+                            <h4 class="action-card-title"><i data-lucide="download"></i> Ekspor Massal</h4>
+                            <p class="card-desc-text">Simpan seluruh hasil naskah artikel yang sukses sebagai kumpulan file HTML mandiri.</p>
+                            <button id="btn-batch-download-zip" class="btn btn-sm btn-primary">
+                                <span class="btn-batch-zip-text"><i data-lucide="archive"></i> Download ZIP (HTML Lengkap)</span>
+                                <div class="btn-batch-zip-spinner hidden">
+                                    <div class="spinner spinner-white"></div>
+                                </div>
+                            </button>
+                        </div>
+
+                        <div class="action-card highlight-card wp-batch-card">
+                            <h4 class="action-card-title"><i data-lucide="wordpress"></i> Auto-Publish WordPress Massal</h4>
+                            <p class="card-desc-text">Unggah seluruh postingan sukses ke WordPress Anda sekaligus (termasuk download & upload gambar otomatis).</p>
+                            <div class="wp-batch-controls-row">
+                                <select id="wp-batch-post-status" class="select-filter">
+                                    <option value="draft">Draft (Draf)</option>
+                                    <option value="publish">Publish (Terbit)</option>
+                                </select>
+                                <button id="btn-batch-upload-wp" class="btn btn-sm btn-primary">
+                                    <span class="btn-batch-pub-text">Upload Massal</span>
+                                    <div class="btn-batch-pub-spinner hidden">
+                                        <div class="spinner spinner-white"></div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WordPress Batch Results List (appears on complete of WP upload) -->
+                    <div id="batch-wp-results-container" class="batch-wp-results-container hidden">
+                        <h4 class="section-heading">Laporan Posting WordPress</h4>
+                        <div id="batch-wp-results-list" class="batch-wp-results-list"></div>
+                    </div>
+
+                    <!-- Queue Table -->
+                    <div class="queue-table-container">
+                        <h4 class="section-heading">Detail Antrean Progres</h4>
+                        <div class="meta-table-wrapper">
+                            <table class="meta-table queue-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Keyword</th>
+                                        <th>Status</th>
+                                        <th>Judul Scraped</th>
+                                        <th>Statistik</th>
+                                        <th>Sumber</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="batch-queue-tbody">
+                                    <!-- populated dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Reset / Back button -->
+                    <div class="batch-footer-actions">
+                        <button id="btn-batch-reset" class="btn btn-outline">
+                            <i data-lucide="arrow-left"></i> Kembali ke Menu Utama
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+    <script src="app.js"></script>
+</body>
+</html>
