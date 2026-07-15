@@ -465,7 +465,7 @@ app.post('/api/search', async (req, res) => {
 // ENDPOINT 3: PUBLISH TO WORDPRESS
 // ==========================================================================
 app.post('/api/wp-publish', async (req, res) => {
-    const { wpUrl, wpUsername, wpAppPassword, title, content, status = 'draft', images = [], category = 'Uncategorized', hotlinkImages = false } = req.body;
+    const { wpUrl, wpUsername, wpAppPassword, title, content, status = 'draft', images = [], category = 'Uncategorized', hotlinkImages = false, date = null } = req.body;
 
     if (!wpUrl || !wpUsername || !wpAppPassword || !title || !content) {
         return res.status(400).json({ error: 'Data WordPress dan artikel tidak lengkap.' });
@@ -631,12 +631,23 @@ app.post('/api/wp-publish', async (req, res) => {
             format: 'standard'
         };
 
+        if (date) {
+            postData.date = date;
+        }
+
         if (featuredMediaId) {
             postData.featured_media = featuredMediaId;
         }
 
         if (categoryId) {
             postData.categories = [categoryId];
+        }
+
+        if (hotlinkImages && images && images.length > 0) {
+            postData.meta = {
+                _fifu_image_url: images[0],
+                fifu_image_url: images[0]
+            };
         }
 
         const postResponse = await axios.post(wpPostsUrl, postData, {

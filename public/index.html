@@ -381,19 +381,26 @@
                             <!-- WordPress Post Card -->
                             <div class="action-card highlight-card">
                                 <h4 class="action-card-title"><i data-lucide="wordpress"></i> WordPress Publisher</h4>
-                                <div class="wp-publish-controls">
-                                    <div class="select-wrapper">
-                                        <select id="wp-post-status" class="select-filter">
-                                            <option value="draft">Draft (Draf)</option>
-                                            <option value="publish">Publish (Terbit)</option>
-                                        </select>
-                                    </div>
-                                    <button id="btn-publish-wp" class="btn btn-sm btn-primary">
-                                        <span class="btn-pub-text">Posting Sekarang</span>
-                                        <div class="btn-pub-spinner hidden">
-                                            <div class="spinner spinner-white"></div>
+                                <div class="wp-publish-controls" style="display: flex; flex-direction: column; gap: 10px; align-items: stretch;">
+                                    <div class="wp-controls-row" style="display: flex; gap: 10px; align-items: center;">
+                                        <div class="select-wrapper" style="flex: 1;">
+                                            <select id="wp-post-status" class="select-filter" style="width: 100%;">
+                                                <option value="draft">Draft (Draf)</option>
+                                                <option value="publish">Publish (Terbit)</option>
+                                                <option value="future">Schedule (Jadwalkan)</option>
+                                            </select>
                                         </div>
-                                    </button>
+                                        <button id="btn-publish-wp" class="btn btn-sm btn-primary" style="flex: 1;">
+                                            <span class="btn-pub-text">Posting Sekarang</span>
+                                            <div class="btn-pub-spinner hidden">
+                                                <div class="spinner spinner-white"></div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                    <div id="wp-single-schedule-container" class="hidden" style="display: flex; flex-direction: column; gap: 4px; padding-top: 4px; border-top: 1px dashed var(--border-color);">
+                                        <label for="wp-single-schedule-time" style="font-size: 0.72rem; color: var(--text-muted);">Tanggal & Waktu Terbit:</label>
+                                        <input type="datetime-local" id="wp-single-schedule-time" class="select-filter" style="width: 100%; height: 36px; padding: 4px 8px;">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -515,17 +522,35 @@
                         <div class="action-card highlight-card wp-batch-card">
                             <h4 class="action-card-title"><i data-lucide="wordpress"></i> Auto-Publish WordPress Massal</h4>
                             <p class="card-desc-text">Unggah seluruh postingan sukses ke WordPress Anda sekaligus (termasuk download & upload gambar otomatis).</p>
-                            <div class="wp-batch-controls-row">
-                                <select id="wp-batch-post-status" class="select-filter">
-                                    <option value="draft">Draft (Draf)</option>
-                                    <option value="publish">Publish (Terbit)</option>
-                                </select>
-                                <button id="btn-batch-upload-wp" class="btn btn-sm btn-primary">
-                                    <span class="btn-batch-pub-text">Upload Massal</span>
-                                    <div class="btn-batch-pub-spinner hidden">
-                                        <div class="spinner spinner-white"></div>
+                            <div class="wp-batch-controls-col" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                                <div class="wp-batch-controls-row" style="display: flex; gap: 10px; width: 100%;">
+                                    <select id="wp-batch-post-status" class="select-filter" style="flex: 1;">
+                                        <option value="draft">Draft (Draf)</option>
+                                        <option value="publish">Publish (Terbit)</option>
+                                        <option value="future">Schedule (Jadwalkan)</option>
+                                    </select>
+                                    <button id="btn-batch-upload-wp" class="btn btn-sm btn-primary" style="flex: 1;">
+                                        <span class="btn-batch-pub-text">Upload Massal</span>
+                                        <div class="btn-batch-pub-spinner hidden">
+                                            <div class="spinner spinner-white"></div>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div id="wp-batch-schedule-container" class="hidden" style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color); width: 100%;">
+                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                        <label for="wp-batch-schedule-start" style="font-size: 0.72rem; color: var(--text-muted);">Mulai Tanggal & Waktu:</label>
+                                        <input type="datetime-local" id="wp-batch-schedule-start" class="select-filter" style="width: 100%; height: 36px; padding: 4px 8px;">
                                     </div>
-                                </button>
+                                    <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                                        <label style="font-size: 0.72rem; color: var(--text-muted); flex: 1;">Jeda Postingan:</label>
+                                        <input type="number" id="wp-batch-schedule-interval-val" class="select-filter" value="2" min="1" style="width: 70px; height: 36px; padding: 4px 8px; text-align: center;">
+                                        <select id="wp-batch-schedule-interval-unit" class="select-filter" style="width: 110px; height: 36px;">
+                                            <option value="minutes">Menit</option>
+                                            <option value="hours" selected>Jam</option>
+                                            <option value="days">Hari</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

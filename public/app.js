@@ -137,6 +137,46 @@ function setupEventListeners() {
     // WordPress Publish Single Button
     document.getElementById('btn-publish-wp').addEventListener('click', publishToWordPress);
 
+    // Show/hide schedule datetime pickers on status change
+    const singleStatusSelect = document.getElementById('wp-post-status');
+    const singleScheduleContainer = document.getElementById('wp-single-schedule-container');
+    const singleScheduleInput = document.getElementById('wp-single-schedule-time');
+    
+    const setNowPlusOneHour = (inputEl) => {
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+        now.setMinutes(0);
+        const offsetMs = now.getTimezoneOffset() * 60 * 1000;
+        const localISOTime = (new Date(now.getTime() - offsetMs)).toISOString().slice(0, 16);
+        inputEl.value = localISOTime;
+    };
+    
+    if (singleScheduleInput) setNowPlusOneHour(singleScheduleInput);
+
+    singleStatusSelect.addEventListener('change', () => {
+        if (singleStatusSelect.value === 'future') {
+            singleScheduleContainer.classList.remove('hidden');
+            setNowPlusOneHour(singleScheduleInput);
+        } else {
+            singleScheduleContainer.classList.add('hidden');
+        }
+    });
+
+    const batchStatusSelect = document.getElementById('wp-batch-post-status');
+    const batchScheduleContainer = document.getElementById('wp-batch-schedule-container');
+    const batchScheduleStart = document.getElementById('wp-batch-schedule-start');
+    
+    if (batchScheduleStart) setNowPlusOneHour(batchScheduleStart);
+
+    batchStatusSelect.addEventListener('change', () => {
+        if (batchStatusSelect.value === 'future') {
+            batchScheduleContainer.classList.remove('hidden');
+            setNowPlusOneHour(batchScheduleStart);
+        } else {
+            batchScheduleContainer.classList.add('hidden');
+        }
+    });
+
     // Theme Toggle
     document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
@@ -646,6 +686,21 @@ async function uploadBatchToWordPress() {
     const status = document.getElementById('wp-batch-post-status').value;
     const wpHotlink = document.getElementById('wp-hotlink-images').checked;
 
+    let scheduleStart = null;
+    let intervalVal = 2;
+    let intervalUnit = 'hours';
+
+    if (status === 'future') {
+        const scheduleStartInput = document.getElementById('wp-batch-schedule-start').value;
+        if (!scheduleStartInput) {
+            showToast('Silakan tentukan Waktu Mulai untuk penjadwalan!', 'error');
+            return;
+        }
+        scheduleStart = new Date(scheduleStartInput);
+        intervalVal = parseInt(document.getElementById('wp-batch-schedule-interval-val').value) || 2;
+        intervalUnit = document.getElementById('wp-batch-schedule-interval-unit').value;
+    }
+
     if (!wpUrl || !wpUser || !wpPass) {
         showToast('Silakan lengkapi Kredensial WordPress Anda di panel kiri!', 'error');
         return;
@@ -672,6 +727,22 @@ async function uploadBatchToWordPress() {
         const item = successItems[i];
         btnText.innerHTML = `Mengunggah ${i + 1}/${totalCount}...`;
 
+        let postDate = null;
+        if (status === 'future' && scheduleStart) {
+            const dateOffset = new Date(scheduleStart.getTime());
+            if (intervalUnit === 'minutes') {
+                dateOffset.setMinutes(dateOffset.getMinutes() + (i * intervalVal));
+            } else if (intervalUnit === 'hours') {
+                dateOffset.setHours(dateOffset.getHours() + (i * intervalVal));
+            } else if (intervalUnit === 'days') {
+                dateOffset.setDate(dateOffset.getDate() + (i * intervalVal));
+            }
+            
+            // Local timezone ISO: YYYY-MM-DDTHH:mm:ss
+            const offsetMs = dateOffset.getTimezoneOffset() * 60 * 1000;
+            postDate = (new Date(dateOffset.getTime() - offsetMs)).toISOString().slice(0, 19);
+        }
+
         // Render progress row in report
         const reportRow = document.createElement('div');
         reportRow.className = 'wp-result-item';
@@ -695,7 +766,8 @@ async function uploadBatchToWordPress() {
                     status,
                     images: item.images.map(img => img.url),
                     category: item.category || 'Uncategorized',
-                    hotlinkImages: wpHotlink
+                    hotlinkImages: wpHotlink,
+                    date: postDate
                 })
             });
 
@@ -861,6 +933,20 @@ async function publishToWordPress() {
     const status = document.getElementById('wp-post-status').value;
     const wpHotlink = document.getElementById('wp-hotlink-images').checked;
 
+    let date = null;
+    if (status === 'future') {
+        const scheduleTimeInput = document.getElementById('wp-single-schedule-time').value;
+        if (scheduleTimeInput) {
+            // Local timezone ISO format: YYYY-MM-DDTHH:mm:ss
+            const dateObj = new Date(scheduleTimeInput);
+            const offsetMs = dateObj.getTimezoneOffset() * 60 * 1000;
+            date = (new Date(dateObj.getTime() - offsetMs)).toISOString().slice(0, 19);
+        } else {
+            showToast('Silakan isi Waktu Terbit terlebih dahulu!', 'error');
+            return;
+        }
+    }
+
     if (!wpUrl || !wpUser || !wpPass) {
         showToast('Silakan isi kredensial WordPress Anda terlebih dahulu!', 'error');
         return;
@@ -890,7 +976,8 @@ async function publishToWordPress() {
                 status,
                 images: activeImagesList.map(img => img.url),
                 category: activeScrapedData.metadata.category || 'Uncategorized',
-                hotlinkImages: wpHotlink
+                hotlinkImages: wpHotlink,
+                date
             })
         });
 
