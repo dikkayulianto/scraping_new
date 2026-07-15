@@ -95,9 +95,20 @@ function cleanHtmlContent($, $container, baseUrl) {
 function findArticleContainer($, html) {
     const semanticContainers = ['article', '[itemprop="articleBody"]', '.post-content', '.entry-content', '.article-content', '.article-body', '#article-body', '.post-body', '.entry-body', '.main-content', '#main-content'];
     for (let selector of semanticContainers) {
-        const $el = $(selector);
-        if ($el.length === 1 && $el.text().trim().length > 200) {
-            return $el;
+        const $els = $(selector);
+        if ($els.length > 0) {
+            let bestEl = null;
+            let maxLength = 0;
+            $els.each((i, el) => {
+                const textLen = $(el).text().trim().length;
+                if (textLen > maxLength) {
+                    maxLength = textLen;
+                    bestEl = $(el);
+                }
+            });
+            if (bestEl && maxLength > 200) {
+                return bestEl;
+            }
         }
     }
 
@@ -157,6 +168,21 @@ app.post('/api/scrape', async (req, res) => {
 
         const html = response.data;
         const $ = cheerio.load(html);
+
+        // Pre-clean global layouts (Header, Footer, Sidebar, Navigation, Comments, Forms, Scripts)
+        const junkLayoutSelectors = [
+            'header', '#header', '.header', '.site-header', '.site-navigation', '.nav-header',
+            'footer', '#footer', '.footer', '.site-footer', '.site-info', '.footer-widgets',
+            'nav', '#nav', '.nav', '.navigation', '.menu', '.main-navigation', '.nav-menu', '.nav-bar', '.navbar',
+            'aside', '#aside', '.aside', '.sidebar', '#sidebar', '.widget-area', '.widgets',
+            '.comment-list', '.comments', '#comments', '.comment-respond', '#respond',
+            '.social-share', '.share', '.sharing', '.social-media', '.social-links',
+            '.related', '.related-posts', '.popular-posts', '.recommended',
+            'form', 'button', 'input', 'select', 'textarea', 'iframe', 'noscript', 'style', 'script'
+        ];
+        junkLayoutSelectors.forEach(sel => {
+            $(sel).remove();
+        });
 
         // Extract Category
         const extractedCategories = [];
