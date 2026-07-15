@@ -394,7 +394,7 @@ app.post('/api/search', async (req, res) => {
 // ENDPOINT 3: PUBLISH TO WORDPRESS
 // ==========================================================================
 app.post('/api/wp-publish', async (req, res) => {
-    const { wpUrl, wpUsername, wpAppPassword, title, content, status = 'draft', images = [], category = 'Uncategorized' } = req.body;
+    const { wpUrl, wpUsername, wpAppPassword, title, content, status = 'draft', images = [], category = 'Uncategorized', hotlinkImages = false } = req.body;
 
     if (!wpUrl || !wpUsername || !wpAppPassword || !title || !content) {
         return res.status(400).json({ error: 'Data WordPress dan artikel tidak lengkap.' });
@@ -477,66 +477,68 @@ app.post('/api/wp-publish', async (req, res) => {
         const uploadedImages = [];
         let featuredMediaId = null;
 
-        // Find all img elements in article
-        const $imgs = $('img');
-        
-        for (let i = 0; i < $imgs.length; i++) {
-            const $img = $($imgs[i]);
-            const src = $img.attr('src');
-            if (!src) continue;
+        if (!hotlinkImages) {
+            // Find all img elements in article
+            const $imgs = $('img');
+            
+            for (let i = 0; i < $imgs.length; i++) {
+                const $img = $($imgs[i]);
+                const src = $img.attr('src');
+                if (!src) continue;
 
-            try {
-                // Download image buffer
-                const imgResponse = await axios.get(src, {
-                    responseType: 'arraybuffer',
-                    headers: DEFAULT_HEADERS,
-                    timeout: 10000
-                });
-
-                const buffer = Buffer.from(imgResponse.data);
-
-                // Determine file type and name
-                const contentType = imgResponse.headers['content-type'] || 'image/jpeg';
-                let ext = 'jpg';
-                if (contentType.includes('png')) ext = 'png';
-                else if (contentType.includes('webp')) ext = 'webp';
-                else if (contentType.includes('gif')) ext = 'gif';
-
-                const filename = `scraped_${Date.now()}_${i}.${ext}`;
-
-                // Upload to WordPress Media API
-                const wpMediaUrl = `${apiBase}/media`;
-                
-                const mediaResponse = await axios.post(wpMediaUrl, buffer, {
-                    headers: {
-                        ...authHeaders,
-                        'Content-Disposition': `attachment; filename=${filename}`,
-                        'Content-Type': contentType
-                    },
-                    timeout: 15000
-                });
-
-                if (mediaResponse.data && mediaResponse.data.source_url) {
-                    const newWpUrl = mediaResponse.data.source_url;
-                    const mediaId = mediaResponse.data.id;
-
-                    // Update Image Source in our HTML
-                    $img.attr('src', newWpUrl);
-                    
-                    uploadedImages.push({
-                        original: src,
-                        wpUrl: newWpUrl,
-                        id: mediaId
+                try {
+                    // Download image buffer
+                    const imgResponse = await axios.get(src, {
+                        responseType: 'arraybuffer',
+                        headers: DEFAULT_HEADERS,
+                        timeout: 10000
                     });
 
-                    // Set first image as featured image
-                    if (!featuredMediaId) {
-                        featuredMediaId = mediaId;
+                    const buffer = Buffer.from(imgResponse.data);
+
+                    // Determine file type and name
+                    const contentType = imgResponse.headers['content-type'] || 'image/jpeg';
+                    let ext = 'jpg';
+                    if (contentType.includes('png')) ext = 'png';
+                    else if (contentType.includes('webp')) ext = 'webp';
+                    else if (contentType.includes('gif')) ext = 'gif';
+
+                    const filename = `scraped_${Date.now()}_${i}.${ext}`;
+
+                    // Upload to WordPress Media API
+                    const wpMediaUrl = `${apiBase}/media`;
+                    
+                    const mediaResponse = await axios.post(wpMediaUrl, buffer, {
+                        headers: {
+                            ...authHeaders,
+                            'Content-Disposition': `attachment; filename=${filename}`,
+                            'Content-Type': contentType
+                        },
+                        timeout: 15000
+                    });
+
+                    if (mediaResponse.data && mediaResponse.data.source_url) {
+                        const newWpUrl = mediaResponse.data.source_url;
+                        const mediaId = mediaResponse.data.id;
+
+                        // Update Image Source in our HTML
+                        $img.attr('src', newWpUrl);
+                        
+                        uploadedImages.push({
+                            original: src,
+                            wpUrl: newWpUrl,
+                            id: mediaId
+                        });
+
+                        // Set first image as featured image
+                        if (!featuredMediaId) {
+                            featuredMediaId = mediaId;
+                        }
                     }
+                } catch (imgErr) {
+                    console.warn(`Gagal mengunggah gambar ke WordPress: ${src}. Detail:`, imgErr.message);
+                    // We proceed with the original hotlinked URL if upload fails
                 }
-            } catch (imgErr) {
-                console.warn(`Gagal mengunggah gambar ke WordPress: ${src}. Detail:`, imgErr.message);
-                // We proceed with the original hotlinked URL if upload fails
             }
         }
 

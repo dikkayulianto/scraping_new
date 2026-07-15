@@ -258,10 +258,12 @@ function saveWordPressConfig() {
     const wpUrl = document.getElementById('wp-url').value.trim();
     const wpUser = document.getElementById('wp-user').value.trim();
     const wpPass = document.getElementById('wp-pass').value.trim();
+    const wpHotlink = document.getElementById('wp-hotlink-images').checked;
 
     localStorage.setItem('scrapeflow-wp-url', wpUrl);
     localStorage.setItem('scrapeflow-wp-user', wpUser);
     localStorage.setItem('scrapeflow-wp-pass', wpPass);
+    localStorage.setItem('scrapeflow-wp-hotlink', wpHotlink ? 'true' : 'false');
 
     showToast('Kredensial WordPress disimpan!', 'success');
 }
@@ -270,6 +272,7 @@ function loadWordPressConfig() {
     document.getElementById('wp-url').value = localStorage.getItem('scrapeflow-wp-url') || '';
     document.getElementById('wp-user').value = localStorage.getItem('scrapeflow-wp-user') || '';
     document.getElementById('wp-pass').value = localStorage.getItem('scrapeflow-wp-pass') || '';
+    document.getElementById('wp-hotlink-images').checked = localStorage.getItem('scrapeflow-wp-hotlink') === 'true';
 }
 
 // ==========================================================================
@@ -641,6 +644,7 @@ async function uploadBatchToWordPress() {
     const wpUser = document.getElementById('wp-user').value.trim();
     const wpPass = document.getElementById('wp-pass').value.trim();
     const status = document.getElementById('wp-batch-post-status').value;
+    const wpHotlink = document.getElementById('wp-hotlink-images').checked;
 
     if (!wpUrl || !wpUser || !wpPass) {
         showToast('Silakan lengkapi Kredensial WordPress Anda di panel kiri!', 'error');
@@ -690,7 +694,8 @@ async function uploadBatchToWordPress() {
                     content: item.articleHtml,
                     status,
                     images: item.images.map(img => img.url),
-                    category: item.category || 'Uncategorized'
+                    category: item.category || 'Uncategorized',
+                    hotlinkImages: wpHotlink
                 })
             });
 
@@ -854,6 +859,7 @@ async function publishToWordPress() {
     const wpUser = document.getElementById('wp-user').value.trim();
     const wpPass = document.getElementById('wp-pass').value.trim();
     const status = document.getElementById('wp-post-status').value;
+    const wpHotlink = document.getElementById('wp-hotlink-images').checked;
 
     if (!wpUrl || !wpUser || !wpPass) {
         showToast('Silakan isi kredensial WordPress Anda terlebih dahulu!', 'error');
@@ -883,7 +889,8 @@ async function publishToWordPress() {
                 content: activeScrapedData.articleHtml,
                 status,
                 images: activeImagesList.map(img => img.url),
-                category: activeScrapedData.metadata.category || 'Uncategorized'
+                category: activeScrapedData.metadata.category || 'Uncategorized',
+                hotlinkImages: wpHotlink
             })
         });
 
