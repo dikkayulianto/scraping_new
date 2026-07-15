@@ -441,31 +441,36 @@ app.post('/api/wp-publish', async (req, res) => {
                     headers: authHeaders,
                     timeout: 8000
                 });
+                const existingCats = catSearchResponse.data;
+                let exactMatch = null;
                 
-                const existingCats = catSearchResponse.data || [];
-                const exactMatch = existingCats.find(c => c.name.toLowerCase() === category.trim().toLowerCase());
-                
-                if (exactMatch) {
-                    categoryId = exactMatch.id;
-                } else {
-                    // Create new category
-                    const catCreateUrl = apiBase.includes('?')
-                        ? `${apiBase.replace('?rest_route=/wp/v2', '')}/index.php?rest_route=/wp/v2/categories`
-                        : `${apiBase}/categories`;
+                if (existingCats && Array.isArray(existingCats)) {
+                    exactMatch = existingCats.find(c => c.name.toLowerCase() === category.trim().toLowerCase());
                     
-                    const catCreateResponse = await axios.post(catCreateUrl, {
-                        name: category.trim()
-                    }, {
-                        headers: {
-                            ...authHeaders,
-                            'Content-Type': 'application/json'
-                        },
-                        timeout: 10000
-                    });
-                    
-                    if (catCreateResponse.data && catCreateResponse.data.id) {
-                        categoryId = catCreateResponse.data.id;
+                    if (exactMatch) {
+                        categoryId = exactMatch.id;
+                    } else {
+                        // Create new category
+                        const catCreateUrl = apiBase.includes('?')
+                            ? `${apiBase.replace('?rest_route=/wp/v2', '')}/index.php?rest_route=/wp/v2/categories`
+                            : `${apiBase}/categories`;
+                        
+                        const catCreateResponse = await axios.post(catCreateUrl, {
+                            name: category.trim()
+                        }, {
+                            headers: {
+                                ...authHeaders,
+                                'Content-Type': 'application/json'
+                            },
+                            timeout: 10000
+                        });
+                        
+                        if (catCreateResponse.data && catCreateResponse.data.id) {
+                            categoryId = catCreateResponse.data.id;
+                        }
                     }
+                } else {
+                    console.warn(`Gagal memproses kategori "${category}": Respons REST API bukan array.`);
                 }
             } catch (catErr) {
                 console.warn(`Gagal memproses kategori "${category}":`, catErr.message);
@@ -568,6 +573,11 @@ app.post('/api/wp-publish', async (req, res) => {
             },
             timeout: 15000
         });
+
+        if (!postResponse.data || typeof postResponse.data !== 'object' || !postResponse.data.id) {
+            const respStr = typeof postResponse.data === 'string' ? postResponse.data : JSON.stringify(postResponse.data);
+            throw new Error(`Respons WordPress tidak valid (REST API terblokir, redirect, atau salah kredensial). Halaman respons: ${respStr.slice(0, 150)}...`);
+        }
 
         res.json({
             success: true,
