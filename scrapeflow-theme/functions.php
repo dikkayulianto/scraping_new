@@ -174,9 +174,34 @@ function scrapeflow_get_post_thumbnail_url( $post_id ) {
 	if ( $post ) {
 		$content = $post->post_content;
 		if ( ! empty( $content ) ) {
-			preg_match( '/<img[^>]+src=[\'"]([^\'"]+)[\'"]/i', $content, $matches );
+			preg_match_all( '/<img[^>]+src=[\'"]([^\'"]+)[\'"]/i', $content, $matches );
 			if ( ! empty( $matches[1] ) ) {
-				return $matches[1];
+				$ignored_keywords = array(
+					'spacer', 'pixel', 'transparent', 'sprite', 'logo', 'tracking', 
+					'icon', 'beacon', 'analytics', 'loading', 'loader', 'fls-na', 
+					'doubleclick', 'amazon-adsystem', 'uedata', 'adsystem', 'avatar'
+				);
+				
+				foreach ( $matches[1] as $img_url ) {
+					$is_junk = false;
+					$img_url_lower = strtolower( $img_url );
+					
+					foreach ( $ignored_keywords as $keyword ) {
+						if ( strpos( $img_url_lower, $keyword ) !== false ) {
+							$is_junk = true;
+							break;
+						}
+					}
+					
+					if ( strpos( $img_url_lower, 'data:' ) === 0 && strlen( $img_url ) < 200 ) {
+						$is_junk = true;
+					}
+					
+					if ( ! $is_junk ) {
+						return $img_url;
+					}
+				}
+				return $matches[1][0];
 			}
 		}
 	}
