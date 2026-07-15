@@ -185,8 +185,79 @@ app.post('/api/scrape', async (req, res) => {
 
         const category = extractedCategories[0] || 'Uncategorized';
 
+        // Extract Title and Clean It
+        let rawTitle = $('meta[property="og:title"]').attr('content') || 
+                       $('meta[name="twitter:title"]').attr('content') || 
+                       $('meta[name="title"]').attr('content') || 
+                       $('title').text().trim();
+        
+        if (!rawTitle) {
+            const h1Selectors = [
+                'article h1',
+                '.entry-title',
+                '.post-title',
+                '.article-title',
+                'h1[class*="title"]',
+                '.entry-header h1'
+            ];
+            for (const selector of h1Selectors) {
+                const text = $(selector).first().text().trim();
+                if (text) {
+                    rawTitle = text;
+                    break;
+                }
+            }
+        }
+        
+        if (!rawTitle) {
+            rawTitle = $('h1').first().text().trim() || 'Untitled Article';
+        }
+
+        // Clean payment gateways, social sharing, and branding suffix from title
+        let cleanTitle = rawTitle;
+        if (cleanTitle) {
+            const paymentGateways = ['american express', 'apple pay', 'diners club', 'discover', 'google pay', 'mastercard', 'shop pay', 'visa'];
+            let lowerTitle = cleanTitle.toLowerCase();
+            let firstMatchPos = -1;
+            let matchCount = 0;
+            
+            for (const gateway of paymentGateways) {
+                const pos = lowerTitle.indexOf(gateway);
+                if (pos !== -1) {
+                    matchCount++;
+                    if (firstMatchPos === -1 || pos < firstMatchPos) {
+                        firstMatchPos = pos;
+                    }
+                }
+            }
+            
+            if (matchCount >= 2 && firstMatchPos > 10) {
+                cleanTitle = cleanTitle.slice(0, firstMatchPos).trim();
+            }
+            
+            cleanTitle = cleanTitle.replace(/\s*(american\s*express|apple\s*pay|diners\s*club|discover|google\s*pay|mastercard|shop\s*pay|visa|paypal|buzzfeed\s*homepage|buzzfeed|facebook|pinterest|link)+\s*$/gi, '').trim();
+            
+            const separators = [' | ', ' - ', ' – ', ' — ', ' • '];
+            for (const sep of separators) {
+                if (cleanTitle.includes(sep)) {
+                    const parts = cleanTitle.split(sep);
+                    const lastPart = parts[parts.length - 1].trim();
+                    if (lastPart.length < 25 || lastPart.toLowerCase().includes('.com') || lastPart.toLowerCase().includes('homepage')) {
+                        parts.pop();
+                        cleanTitle = parts.join(sep).trim();
+                    }
+                }
+            }
+            
+            cleanTitle = cleanTitle.replace(/[\s|:|•|\-|–|—]+$/, '').trim();
+        }
+        
+        if (!cleanTitle) {
+            cleanTitle = 'Untitled Article';
+        }
+
         const metadata = {
-            title: $('title').text().trim() || $('meta[property="og:title"]').attr('content') || $('h1').first().text().trim() || 'Untitled Article',
+            title: cleanTitle,
             description: $('meta[name="description"]').attr('content') || $('meta[property="og:description"]').attr('content') || '',
             author: $('meta[name="author"]').attr('content') || $('meta[property="article:author"]').attr('content') || $('.author').first().text().trim() || 'Unknown Author',
             publishDate: $('meta[name="publish-date"]').attr('content') || $('meta[property="article:published_time"]').attr('content') || $('time').first().attr('datetime') || $('time').first().text().trim() || '',
