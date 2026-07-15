@@ -16,9 +16,12 @@ get_header();
 				the_post();
 				?>
 				<article id="post-<?php the_ID(); ?>" <?php post_class( 'post-card' ); ?>>
-					<?php if ( has_post_thumbnail() ) : ?>
+					<?php 
+					$thumbnail_url = scrapeflow_get_post_thumbnail_url( get_the_ID() );
+					if ( ! empty( $thumbnail_url ) ) : 
+					?>
 						<a class="post-thumbnail-link" href="<?php the_permalink(); ?>">
-							<?php the_post_thumbnail( 'large' ); ?>
+							<img src="<?php echo esc_url( $thumbnail_url ); ?>" alt="<?php the_title_attribute(); ?>" loading="lazy" />
 						</a>
 					<?php endif; ?>
 

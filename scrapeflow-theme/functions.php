@@ -151,3 +151,35 @@ function scrapeflow_theme_excerpt_more( $more ) {
 	return '...';
 }
 add_filter( 'excerpt_more', 'scrapeflow_theme_excerpt_more' );
+
+/**
+ * Get Featured Image URL supporting native attachment, FIFU meta keys, or post content fallback
+ */
+function scrapeflow_get_post_thumbnail_url( $post_id ) {
+	if ( has_post_thumbnail( $post_id ) ) {
+		return get_the_post_thumbnail_url( $post_id, 'large' );
+	}
+
+	$fifu_url = get_post_meta( $post_id, '_fifu_image_url', true );
+	if ( ! empty( $fifu_url ) ) {
+		return $fifu_url;
+	}
+	
+	$fifu_url_alt = get_post_meta( $post_id, 'fifu_image_url', true );
+	if ( ! empty( $fifu_url_alt ) ) {
+		return $fifu_url_alt;
+	}
+
+	$post = get_post( $post_id );
+	if ( $post ) {
+		$content = $post->post_content;
+		if ( ! empty( $content ) ) {
+			preg_match( '/<img[^>]+src=[\'"]([^\'"]+)[\'"]/i', $content, $matches );
+			if ( ! empty( $matches[1] ) ) {
+				return $matches[1];
+			}
+		}
+	}
+
+	return '';
+}
