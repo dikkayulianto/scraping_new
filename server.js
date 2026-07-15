@@ -417,15 +417,17 @@ app.post('/api/wp-publish', async (req, res) => {
         // Detect REST API path (pretty vs plain permalinks)
         let apiBase = `${baseUrl}/wp-json/wp/v2`;
         try {
-            await axios.get(`${baseUrl}/wp-json/wp/v2/posts?per_page=1`, {
+            const testRes = await axios.get(`${baseUrl}/wp-json/wp/v2/posts?per_page=1`, {
                 headers: authHeaders,
                 timeout: 5000
             });
-        } catch (testErr) {
-            // If the endpoint is physically not found, try index.php?rest_route fallback
-            if (testErr.response && testErr.response.status === 404) {
-                apiBase = `${baseUrl}/index.php?rest_route=/wp/v2`;
+            const contentType = testRes.headers['content-type'] || '';
+            if (!contentType.includes('application/json') || typeof testRes.data !== 'object') {
+                throw new Error('Bukan respons JSON valid');
             }
+        } catch (testErr) {
+            // Jika REST API biasa tidak mengembalikan JSON valid (misal: redirect ke homepage), gunakan fallback plain permalinks
+            apiBase = `${baseUrl}/index.php?rest_route=/wp/v2`;
         }
 
         // Resolving Category in WordPress
