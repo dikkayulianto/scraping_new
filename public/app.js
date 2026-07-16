@@ -462,6 +462,20 @@ async function startBatchScraping() {
             break;
         }
 
+        // Add random delay between searches to prevent rate-limiting (except first keyword)
+        if (i > 0) {
+            const delay = Math.floor(Math.random() * 2000) + 2000; // 2 to 4 seconds
+            progressText.textContent = `Menunggu jeda aman agar tidak terblokir (${Math.round(delay/1000)}s)... (${i}/${totalKeywords})`;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
+            // Re-verify pause state after the delay
+            try {
+                await checkPause();
+            } catch (e) {
+                break;
+            }
+        }
+
         const kw = keywords[i];
         progressText.textContent = `Mencari artikel untuk keyword: "${kw}" (${i + 1}/${totalKeywords})...`;
         
@@ -565,6 +579,20 @@ async function startBatchScraping() {
             await checkPause();
         } catch (e) {
             break;
+        }
+
+        // Add small random delay between scrapes to be gentle to target hosts (except first article)
+        if (i > 0) {
+            const delay = Math.floor(Math.random() * 1000) + 1000; // 1 to 2 seconds
+            progressText.textContent = `Jeda aman antar artikel (${Math.round(delay/1000)}s)... (${i}/${totalQueueItems})`;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
+            // Re-verify pause state after the delay
+            try {
+                await checkPause();
+            } catch (e) {
+                break;
+            }
         }
 
         const item = batchQueue[i];
