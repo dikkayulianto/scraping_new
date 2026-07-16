@@ -486,6 +486,16 @@
                         <div id="batch-progress-bar-fill" class="batch-progress-bar-fill" style="width: 0%;"></div>
                     </div>
 
+                    <!-- Batch Controls (Pause / Resume / Stop) -->
+                    <div id="batch-controls-container" class="batch-run-controls" style="display: flex; gap: 10px; margin-top: 15px; margin-bottom: 20px; justify-content: flex-start; align-items: center;">
+                        <button id="btn-batch-pause" class="btn btn-sm btn-secondary" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-sm);">
+                            <i data-lucide="pause" style="width:16px; height:16px;"></i> <span id="btn-batch-pause-text">Jeda (Pause)</span>
+                        </button>
+                        <button id="btn-batch-stop" class="btn btn-sm btn-outline" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-sm); border-color: var(--accent-red); color: var(--accent-red);">
+                            <i data-lucide="square" style="width:16px; height:16px;"></i> Hentikan (Stop)
+                        </button>
+                    </div>
+
                     <!-- Batch Statistics Row -->
                     <div class="stats-bar">
                         <div class="stat-card">

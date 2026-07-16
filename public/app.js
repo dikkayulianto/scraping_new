@@ -5,6 +5,8 @@ let activeImagesList = [];
 // Batch Scraping Queue State
 let batchQueue = [];
 let isBatchRunning = false;
+let isBatchPaused = false;
+let shouldStopBatch = false;
 
 // Initialize Page
 document.addEventListener('DOMContentLoaded', () => {
@@ -130,6 +132,10 @@ function setupEventListeners() {
     document.getElementById('btn-batch-download-zip').addEventListener('click', downloadBatchHtmlZip);
     document.getElementById('btn-batch-upload-wp').addEventListener('click', uploadBatchToWordPress);
     document.getElementById('btn-batch-reset').addEventListener('click', resetBatchDashboard);
+    
+    // Batch Pause/Stop Controls
+    document.getElementById('btn-batch-pause').addEventListener('click', toggleBatchPause);
+    document.getElementById('btn-batch-stop').addEventListener('click', stopBatchScraping);
 
     // WordPress Settings Save
     document.getElementById('btn-save-wp').addEventListener('click', saveWordPressConfig);
@@ -341,6 +347,55 @@ function handleKeywordFileLoad(e) {
     reader.readAsText(file);
 }
 
+// Helper: Check if batch scraping is paused, block execution if it is. Throw error if stopped.
+async function checkPause() {
+    while (isBatchPaused) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    if (shouldStopBatch) {
+        throw new Error('STOPPED');
+    }
+}
+
+// Action: Toggle Pause/Resume State
+function toggleBatchPause() {
+    if (!isBatchRunning) return;
+    
+    isBatchPaused = !isBatchPaused;
+    
+    const pauseBtn = document.getElementById('btn-batch-pause');
+    
+    if (isBatchPaused) {
+        pauseBtn.classList.remove('btn-secondary');
+        pauseBtn.classList.add('btn-primary');
+        pauseBtn.innerHTML = `<i data-lucide="play" style="width:16px; height:16px;"></i> <span id="btn-batch-pause-text">Lanjutkan (Resume)</span>`;
+        showToast('Proses batch ditangguhkan (PAUSED).', 'info');
+    } else {
+        pauseBtn.classList.remove('btn-primary');
+        pauseBtn.classList.add('btn-secondary');
+        pauseBtn.innerHTML = `<i data-lucide="pause" style="width:16px; height:16px;"></i> <span id="btn-batch-pause-text">Jeda (Pause)</span>`;
+        showToast('Proses batch dilanjutkan.', 'success');
+    }
+    lucide.createIcons();
+}
+
+// Action: Stop Batch Scraping
+function stopBatchScraping() {
+    if (!isBatchRunning) return;
+    
+    if (confirm('Apakah Anda yakin ingin membatalkan/menghentikan antrean scraping? Hasil yang sudah terdownload akan tetap tersimpan.')) {
+        shouldStopBatch = true;
+        isBatchPaused = false;
+        
+        const pauseBtn = document.getElementById('btn-batch-pause');
+        pauseBtn.classList.remove('btn-primary');
+        pauseBtn.classList.add('btn-secondary');
+        pauseBtn.innerHTML = `<i data-lucide="pause" style="width:16px; height:16px;"></i> <span id="btn-batch-pause-text">Jeda (Pause)</span>`;
+        
+        showToast('Sedang membatalkan antrean...', 'warning');
+    }
+}
+
 // ==========================================================================
 // BATCH ENGINE: CRAWLER & SCRAPER QUEUE
 // ==========================================================================
@@ -367,7 +422,16 @@ async function startBatchScraping() {
 
     // Set State
     isBatchRunning = true;
+    isBatchPaused = false;
+    shouldStopBatch = false;
     batchQueue = [];
+    
+    // Reset Controls UI
+    const pauseBtn = document.getElementById('btn-batch-pause');
+    pauseBtn.classList.remove('btn-primary');
+    pauseBtn.classList.add('btn-secondary');
+    pauseBtn.innerHTML = `<i data-lucide="pause" style="width:16px; height:16px;"></i> <span id="btn-batch-pause-text">Jeda (Pause)</span>`;
+    document.getElementById('batch-controls-container').classList.remove('hidden');
     
     // Hide old banners & actions
     document.getElementById('batch-actions-panel').classList.add('hidden');
@@ -392,6 +456,12 @@ async function startBatchScraping() {
     const totalKeywords = keywords.length;
 
     for (let i = 0; i < totalKeywords; i++) {
+        try {
+            await checkPause();
+        } catch (e) {
+            break;
+        }
+
         const kw = keywords[i];
         progressText.textContent = `Mencari artikel untuk keyword: "${kw}" (${i + 1}/${totalKeywords})...`;
         
@@ -491,6 +561,12 @@ async function startBatchScraping() {
     document.getElementById('batch-stat-words').textContent = 0;
 
     for (let i = 0; i < totalQueueItems; i++) {
+        try {
+            await checkPause();
+        } catch (e) {
+            break;
+        }
+
         const item = batchQueue[i];
         
         progressText.textContent = `Mengekstrak artikel ${i + 1} dari ${totalQueueItems}: "${item.title}"...`;
@@ -542,6 +618,9 @@ async function startBatchScraping() {
 
     // Complete Run
     isBatchRunning = false;
+    isBatchPaused = false;
+    shouldStopBatch = false;
+    document.getElementById('batch-controls-container').classList.add('hidden');
     progressText.textContent = `Batch selesai! Sukses: ${countSuccess}, Gagal: ${countFailed}.`;
     showToast('Batch scraping selesai!', 'success');
 
