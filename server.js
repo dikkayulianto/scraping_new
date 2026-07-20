@@ -491,7 +491,11 @@ app.post('/api/search', async (req, res) => {
 // ENDPOINT 3: PUBLISH TO WORDPRESS
 // ==========================================================================
 app.post('/api/wp-publish', async (req, res) => {
-    const { wpUrl, wpUsername, wpAppPassword, title, content, status = 'draft', images = [], category = 'Uncategorized', hotlinkImages = false, date = null } = req.body;
+    const { 
+        wpUrl, wpUsername, wpAppPassword, title, content, status = 'draft', 
+        images = [], category = 'Uncategorized', hotlinkImages = false, date = null,
+        useAi = false, aiProvider = 'gemini', aiApiKey = '', aiPrompt = '' 
+    } = req.body;
 
     if (!wpUrl || !wpUsername || !wpAppPassword || !title || !content) {
         return res.status(400).json({ error: 'Data WordPress dan artikel tidak lengkap.' });
@@ -511,6 +515,79 @@ app.post('/api/wp-publish', async (req, res) => {
     };
 
     try {
+        let aiTitle = title;
+        let aiDescription = '';
+        let aiContent = content;
+
+        if (useAi && aiApiKey) {
+            try {
+                console.log(`[AI Rewrite] Processing article with ${aiProvider}...`);
+                const systemPrompt = aiPrompt || `Tulis ulang artikel berikut ke dalam Bahasa Indonesia yang natural, informatif, dan SEO-friendly.
+Format output harus tepat seperti ini:
+[TITLE]: judul baru yang menarik dan SEO-friendly
+[DESCRIPTION]: deskripsi singkat unik 150 karakter untuk meta description
+[CONTENT]:
+isi artikel yang ditulis ulang dalam format HTML, pertahankan gambar (tag <img>) dan link (tag <a>). Jangan gunakan tag <html> atau <body>, cukup isi artikelnya saja.`;
+
+                let aiText = '';
+                if (aiProvider === 'gemini') {
+                    const response = await axios.post(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${aiApiKey.trim()}`,
+                        {
+                            contents: [{ parts: [{ text: `${systemPrompt}\n\nBerikut adalah artikel asli:\n\nJudul: ${title}\n\nKonten:\n${content}` }] }]
+                        },
+                        { timeout: 45000 }
+                    );
+                    if (response.data && response.data.candidates && response.data.candidates[0].content && response.data.candidates[0].content.parts) {
+                        aiText = response.data.candidates[0].content.parts[0].text;
+                    }
+                } else if (aiProvider === 'openai') {
+                    const response = await axios.post(
+                        'https://api.openai.com/v1/chat/completions',
+                        {
+                            model: 'gpt-4o-mini',
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: `Judul: ${title}\n\nKonten:\n${content}` }
+                            ],
+                            temperature: 0.7
+                        },
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${aiApiKey.trim()}`
+                            },
+                            timeout: 45000
+                        }
+                    );
+                    if (response.data && response.data.choices && response.data.choices[0].message) {
+                        aiText = response.data.choices[0].message.content;
+                    }
+                }
+
+                if (aiText) {
+                    const titleMatch = aiText.match(/\[TITLE\]:\s*(.*?)(?=\n|\[DESCRIPTION\]|\[CONTENT\]|$)/i);
+                    if (titleMatch && titleMatch[1]) {
+                        aiTitle = titleMatch[1].trim();
+                    }
+
+                    const descMatch = aiText.match(/\[DESCRIPTION\]:\s*(.*?)(?=\n|\[TITLE\]|\[CONTENT\]|$)/i);
+                    if (descMatch && descMatch[1]) {
+                        aiDescription = descMatch[1].trim();
+                    }
+
+                    const contentIndex = aiText.indexOf('[CONTENT]:');
+                    if (contentIndex !== -1) {
+                        aiContent = aiText.slice(contentIndex + 10).trim();
+                        aiContent = aiContent.replace(/^```html\s*/i, '').replace(/```\s*$/, '').trim();
+                    }
+                }
+                console.log(`[AI Rewrite] Successfully processed! Title: "${aiTitle.slice(0, 45)}..."`);
+            } catch (aiErr) {
+                console.warn('Gagal memproses rewrite AI, menggunakan konten asli. Detail:', aiErr.message);
+            }
+        }
+
         // Detect REST API path (pretty vs plain permalinks)
         let apiBase = `${baseUrl}/wp-json/wp/v2`;
         try {
@@ -577,7 +654,7 @@ app.post('/api/wp-publish', async (req, res) => {
         }
 
         // 1. Upload Images to WP Media Library & Replace URLs in HTML
-        const $ = cheerio.load(content);
+        const $ = cheerio.load(aiContent);
         const uploadedImages = [];
         let featuredMediaId = null;
 
@@ -651,11 +728,15 @@ app.post('/api/wp-publish', async (req, res) => {
         // 2. Create the Post in WordPress
         const wpPostsUrl = `${apiBase}/posts`;
         const postData = {
-            title,
+            title: aiTitle,
             content: finalContentHtml,
             status,
             format: 'standard'
         };
+
+        if (aiDescription) {
+            postData.excerpt = aiDescription;
+        }
 
         if (date) {
             postData.date = date;

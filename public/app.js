@@ -183,6 +183,19 @@ function setupEventListeners() {
         }
     });
 
+    // AI Enable toggle listener
+    const aiEnableCheck = document.getElementById('ai-enable');
+    const aiFieldsContainer = document.getElementById('ai-fields-container');
+    if (aiEnableCheck) {
+        aiEnableCheck.addEventListener('change', () => {
+            if (aiEnableCheck.checked) {
+                aiFieldsContainer.classList.remove('hidden');
+            } else {
+                aiFieldsContainer.classList.add('hidden');
+            }
+        });
+    }
+
     // Theme Toggle
     document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
@@ -306,12 +319,22 @@ function saveWordPressConfig() {
     const wpPass = document.getElementById('wp-pass').value.trim();
     const wpHotlink = document.getElementById('wp-hotlink-images').checked;
 
+    const aiEnable = document.getElementById('ai-enable').checked;
+    const aiProvider = document.getElementById('ai-provider').value;
+    const aiKey = document.getElementById('ai-key').value.trim();
+    const aiPrompt = document.getElementById('ai-prompt').value.trim();
+
     localStorage.setItem('scrapeflow-wp-url', wpUrl);
     localStorage.setItem('scrapeflow-wp-user', wpUser);
     localStorage.setItem('scrapeflow-wp-pass', wpPass);
     localStorage.setItem('scrapeflow-wp-hotlink', wpHotlink ? 'true' : 'false');
+    
+    localStorage.setItem('scrapeflow-ai-enable', aiEnable ? 'true' : 'false');
+    localStorage.setItem('scrapeflow-ai-provider', aiProvider);
+    localStorage.setItem('scrapeflow-ai-key', aiKey);
+    localStorage.setItem('scrapeflow-ai-prompt', aiPrompt);
 
-    showToast('Kredensial WordPress disimpan!', 'success');
+    showToast('Kredensial & Pengaturan AI disimpan!', 'success');
 }
 
 function loadWordPressConfig() {
@@ -319,6 +342,28 @@ function loadWordPressConfig() {
     document.getElementById('wp-user').value = localStorage.getItem('scrapeflow-wp-user') || '';
     document.getElementById('wp-pass').value = localStorage.getItem('scrapeflow-wp-pass') || '';
     document.getElementById('wp-hotlink-images').checked = localStorage.getItem('scrapeflow-wp-hotlink') === 'true';
+
+    const aiEnable = localStorage.getItem('scrapeflow-ai-enable') === 'true';
+    document.getElementById('ai-enable').checked = aiEnable;
+    document.getElementById('ai-provider').value = localStorage.getItem('scrapeflow-ai-provider') || 'gemini';
+    document.getElementById('ai-key').value = localStorage.getItem('scrapeflow-ai-key') || '';
+    
+    const defaultPrompt = `Tulis ulang artikel berikut ke dalam Bahasa Indonesia yang natural, informatif, dan SEO-friendly.
+Format output harus tepat seperti ini:
+[TITLE]: judul baru yang menarik dan SEO-friendly
+[DESCRIPTION]: deskripsi singkat unik 150 karakter untuk meta description
+[CONTENT]:
+isi artikel yang ditulis ulang dalam format HTML, pertahankan gambar (tag <img>) dan link (tag <a>). Jangan gunakan tag <html> atau <body>, cukup isi artikelnya saja.`;
+    document.getElementById('ai-prompt').value = localStorage.getItem('scrapeflow-ai-prompt') || defaultPrompt;
+
+    const fieldsContainer = document.getElementById('ai-fields-container');
+    if (fieldsContainer) {
+        if (aiEnable) {
+            fieldsContainer.classList.remove('hidden');
+        } else {
+            fieldsContainer.classList.add('hidden');
+        }
+    }
 }
 
 // ==========================================================================
@@ -793,6 +838,16 @@ async function uploadBatchToWordPress() {
     const status = document.getElementById('wp-batch-post-status').value;
     const wpHotlink = document.getElementById('wp-hotlink-images').checked;
 
+    const aiEnable = document.getElementById('ai-enable').checked;
+    const aiProvider = document.getElementById('ai-provider').value;
+    const aiKey = document.getElementById('ai-key').value.trim();
+    const aiPrompt = document.getElementById('ai-prompt').value.trim();
+
+    if (aiEnable && !aiKey) {
+        showToast('Silakan isi API Key AI Anda terlebih dahulu jika AI Rewrite aktif!', 'error');
+        return;
+    }
+
     let scheduleStart = null;
     let intervalVal = 2;
     let intervalUnit = 'hours';
@@ -874,7 +929,11 @@ async function uploadBatchToWordPress() {
                     images: item.images.map(img => img.url),
                     category: item.category || 'Uncategorized',
                     hotlinkImages: wpHotlink,
-                    date: postDate
+                    date: postDate,
+                    useAi: aiEnable,
+                    aiProvider,
+                    aiApiKey: aiKey,
+                    aiPrompt
                 })
             });
 
@@ -1054,6 +1113,16 @@ async function publishToWordPress() {
         }
     }
 
+    const aiEnable = document.getElementById('ai-enable').checked;
+    const aiProvider = document.getElementById('ai-provider').value;
+    const aiKey = document.getElementById('ai-key').value.trim();
+    const aiPrompt = document.getElementById('ai-prompt').value.trim();
+
+    if (aiEnable && !aiKey) {
+        showToast('Silakan isi API Key AI Anda terlebih dahulu jika AI Rewrite aktif!', 'error');
+        return;
+    }
+
     if (!wpUrl || !wpUser || !wpPass) {
         showToast('Silakan isi kredensial WordPress Anda terlebih dahulu!', 'error');
         return;
@@ -1084,7 +1153,11 @@ async function publishToWordPress() {
                 images: activeImagesList.map(img => img.url),
                 category: activeScrapedData.metadata.category || 'Uncategorized',
                 hotlinkImages: wpHotlink,
-                date
+                date,
+                useAi: aiEnable,
+                aiProvider,
+                aiApiKey: aiKey,
+                aiPrompt
             })
         });
 
